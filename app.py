@@ -3,6 +3,11 @@ from bokeh.models import Button, PreText
 from bokeh.plotting import curdoc
 import pywinpty
 import threading
+import numpy as np
+
+if not hasattr(np, 'bool8'):
+    np.bool8 = np.bool
+
 
 # Bokeh elements
 output_display = PreText(text="Output will appear here", width=500, height=300)

@@ -1,42 +1,46 @@
-from bokeh.layouts import column
-from bokeh.models import Button, PreText
-from bokeh.plotting import curdoc
+import streamlit as st
 import pywinpty
 import threading
-import numpy as np
 
-if not hasattr(np, 'bool8'):
-    np.bool8 = np.bool
-
-
-# Bokeh elements
-output_display = PreText(text="Output will appear here", width=500, height=300)
-run_command_button = Button(label="Run Command", button_type="success")
-
-def run_command():
-    # Function to run a command using pywinpty and display output in the Bokeh app
-    output_display.text = "Starting command...\n"
+# Function to run a command using pywinpty
+def run_command(command):
+    output_lines = []
 
     # Create a pseudo-terminal
-    master, slave = pywinpty.PtyProcess.spawn(['cmd.exe', '/k', 'echo Hello, Bokeh with pywinpty!'])
+    master, slave = pywinpty.PtyProcess.spawn(['cmd.exe', '/k', command])
 
-    # Read and update the output in a separate thread
-    def update_output():
+    # Read output from the pseudo-terminal
+    def read_output():
         while True:
             try:
                 output = master.read(1)
                 if output:
-                    output_display.text += output.decode('utf-8')
+                    output_lines.append(output.decode('utf-8'))
+                    st.session_state["output"] = "".join(output_lines)
                 else:
                     break
             except EOFError:
                 break
 
-    threading.Thread(target=update_output, daemon=True).start()
+    thread = threading.Thread(target=read_output, daemon=True)
+    thread.start()
+    thread.join()
 
-# Set up the button click event
-run_command_button.on_click(run_command)
+# Streamlit app layout
+st.title("Streamlit App with pywinpty")
+st.write("Run commands interactively in a pseudo-terminal!")
 
-# Layout
-curdoc().add_root(column(run_command_button, output_display))
-curdoc().title = "Bokeh App with pywinpty"
+# Command input
+command = st.text_input("Enter a command to run (e.g., `echo Hello World`):")
+
+# Run the command when the button is clicked
+if st.button("Run Command"):
+    if command.strip():
+        st.session_state["output"] = ""
+        run_command(command)
+    else:
+        st.warning("Please enter a valid command.")
+
+# Display output
+if "output" in st.session_state:
+    st.text_area("Command Output", st.session_state["output"], height=300)

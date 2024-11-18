@@ -1,2 +1,2 @@
-bokeh==2.4.3
-pywinpty==2.0.13
+streamlit
+pywinpty

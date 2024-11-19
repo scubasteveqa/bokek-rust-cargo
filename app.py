@@ -1,46 +1,30 @@
-import streamlit as st
-import pywinpty
-import threading
+from bokeh.layouts import column
+from bokeh.models import Button, PreText, TextInput
+from bokeh.plotting import curdoc
+import rust_bokeh
 
-# Function to run a command using pywinpty
-def run_command(command):
-    output_lines = []
+# Initialize Bokeh widgets
+command_input = TextInput(title="Enter Command", placeholder="e.g., echo Hello from Rust!")
+output_display = PreText(text="Output will appear here", width=600, height=300)
+run_button = Button(label="Run Command", button_type="success")
 
-    # Create a pseudo-terminal
-    master, slave = pywinpty.PtyProcess.spawn(['cmd.exe', '/k', command])
+# Function to execute the Rust command
+def run_command():
+    command = command_input.value.strip()
+    if not command:
+        output_display.text = "Please enter a valid command."
+        return
 
-    # Read output from the pseudo-terminal
-    def read_output():
-        while True:
-            try:
-                output = master.read(1)
-                if output:
-                    output_lines.append(output.decode('utf-8'))
-                    st.session_state["output"] = "".join(output_lines)
-                else:
-                    break
-            except EOFError:
-                break
+    try:
+        output = rust_bokeh.run_command(command)
+        output_display.text = f"Command: {command}\n\nOutput:\n{output}"
+    except Exception as e:
+        output_display.text = f"Error: {str(e)}"
 
-    thread = threading.Thread(target=read_output, daemon=True)
-    thread.start()
-    thread.join()
+# Set up the button click callback
+run_button.on_click(run_command)
 
-# Streamlit app layout
-st.title("Streamlit App with pywinpty")
-st.write("Run commands interactively in a pseudo-terminal!")
-
-# Command input
-command = st.text_input("Enter a command to run (e.g., `echo Hello World`):")
-
-# Run the command when the button is clicked
-if st.button("Run Command"):
-    if command.strip():
-        st.session_state["output"] = ""
-        run_command(command)
-    else:
-        st.warning("Please enter a valid command.")
-
-# Display output
-if "output" in st.session_state:
-    st.text_area("Command Output", st.session_state["output"], height=300)
+# Layout and add to document
+layout = column(command_input, run_button, output_display)
+curdoc().add_root(layout)
+curdoc().title = "Bokeh App with Rust Integration"

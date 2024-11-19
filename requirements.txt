@@ -1,2 +1,2 @@
-streamlit
-pywinpty
+bokeh>=2.4.3
+maturin>=0.14
